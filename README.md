@@ -87,7 +87,8 @@ AI-Face-Attendance-System/
 │      Attendance.csv
 │      Attendance.xlsx
 │
-├── encodings.pkl
+├── lbph_model.yml
+├── labels.pkl
 │
 ├── encode_faces.py
 ├── attendance.py
@@ -105,7 +106,6 @@ AI-Face-Attendance-System/
 |------------|----------|
 | Python | Programming Language |
 | OpenCV | Computer Vision |
-| face_recognition | Face Detection & Recognition |
 | NumPy | Numerical Operations |
 | Pandas | Attendance Management |
 | OpenPyXL | Excel Export |
@@ -133,6 +133,9 @@ Install dependencies
 ```bash
 pip install -r requirements.txt
 ```
+
+> Note: This project is tested with Python 3.11 and 3.12 on Windows.
+> If you are using Python 3.14, install Python 3.11 or 3.12 and recreate the virtual environment.
 
 ---
 
@@ -197,8 +200,7 @@ Example
 #  Libraries Used
 
 ```
-face_recognition
-opencv-python
+opencv-contrib-python
 numpy
 pandas
 openpyxl

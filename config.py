@@ -8,6 +8,7 @@ Author : Malay Maity
 """
 
 import os
+import cv2
 
 # =========================================================
 # PROJECT PATHS
@@ -20,6 +21,10 @@ IMAGE_FOLDER = os.path.join(BASE_DIR, "images")
 ATTENDANCE_FOLDER = os.path.join(BASE_DIR, "Attendance")
 
 ENCODING_FILE = os.path.join(BASE_DIR, "encodings.pkl")
+
+MODEL_FILE = os.path.join(BASE_DIR, "lbph_model.yml")
+
+LABELS_FILE = os.path.join(BASE_DIR, "labels.pkl")
 
 CSV_FILE = os.path.join(
     ATTENDANCE_FOLDER,
@@ -41,6 +46,11 @@ LOG_FOLDER = os.path.join(
     "logs"
 )
 
+HAAR_CASCADE_PATH = os.path.join(
+    cv2.data.haarcascades,
+    "haarcascade_frontalface_default.xml"
+)
+
 # =========================================================
 # CAMERA SETTINGS
 # =========================================================
@@ -57,12 +67,12 @@ PROCESS_SCALE = 0.25
 # FACE RECOGNITION SETTINGS
 # =========================================================
 
-FACE_DETECTION_MODEL = "hog"
+FACE_DETECTION_MODEL = "haar"
 # Options:
-# "hog" -> CPU (Fast)
-# "cnn" -> GPU (More Accurate)
+# "haar" -> OpenCV Haar Cascade
+# "lbp" -> OpenCV LBP Cascade
 
-FACE_TOLERANCE = 0.50
+LBPH_CONFIDENCE_THRESHOLD = 80
 
 SHOW_CONFIDENCE = True
 

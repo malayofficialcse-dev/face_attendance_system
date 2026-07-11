@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+ENV/
+env/
+.venv/
+
+# Logs and runtime files
+*.log
+logs/
+
+# Build / distribution
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+
+# OpenCV / face recognition generated data
+*.pkl
+lbph_model.yml
+labels.pkl
+
+# Local data and outputs
+Attendance/
+Unknown/
+images/
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
