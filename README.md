@@ -7,6 +7,18 @@ An intelligent Face Recognition Attendance System built using **Python**, **Open
 
 ##  Demo
 
+<p align="center">
+  <img src="assets/main.png" alt="AI Face Attendance System Architecture" width="900">
+</p>
+
+<p align="center">
+  <img src="assets/main1.png" alt="AI Face Attendance System Architecture" width="900">
+</p>
+
+<p align="center">
+  <img src="assets/main2.png" alt="AI Face Attendance System Architecture" width="900">
+</p>
+
 > Coming Soon
 
 ---
