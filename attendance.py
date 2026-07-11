@@ -35,6 +35,18 @@ SAVE_UNKNOWN_FACE = config.SAVE_UNKNOWN_FACE
 UNKNOWN_IMAGE_FORMAT = config.UNKNOWN_IMAGE_FORMAT
 UNKNOWN_PREFIX = config.UNKNOWN_PREFIX
 SHOW_CONFIDENCE = config.SHOW_CONFIDENCE
+FONT_SCALE = config.FONT_SCALE
+FONT_THICKNESS = config.FONT_THICKNESS
+BOX_THICKNESS = config.BOX_THICKNESS
+KNOWN_FACE_COLOR = config.KNOWN_FACE_COLOR
+UNKNOWN_FACE_COLOR = config.UNKNOWN_FACE_COLOR
+TEXT_COLOR = config.TEXT_COLOR
+INFO_COLOR = config.INFO_COLOR
+
+PANEL_BG_COLOR = (28, 28, 28)
+PANEL_ACCENT_COLOR = (12, 115, 255)
+STATUS_BG_COLOR = (10, 10, 10)
+
 WINDOW_NAME = config.WINDOW_NAME
 CAMERA_INDEX = config.CAMERA_INDEX
 FRAME_WIDTH = config.FRAME_WIDTH
@@ -137,8 +149,131 @@ create_attendance_files()
 # CONFIDENCE CALCULATION
 # =========================================================
 
-def face_confidence(confidence):
-    return round(confidence, 2)
+def face_confidence(raw_distance):
+    percentage = max(0.0, min(100.0, 100.0 - raw_distance))
+    return round(percentage, 2)
+
+
+# =========================================================
+# UI HELPERS
+# =========================================================
+
+def draw_transparent_panel(frame, x, y, w, h, color, alpha=0.75):
+    overlay = frame.copy()
+    cv2.rectangle(overlay, (x, y), (x + w, y + h), color, cv2.FILLED)
+    cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0, frame)
+
+
+def draw_side_panel(frame, status_message, attendance_count, face_names):
+    panel_width = 360
+    panel_margin = 12
+    x = frame.shape[1] - panel_width - panel_margin
+    y = panel_margin
+    panel_height = frame.shape[0] - panel_margin * 2
+
+    draw_transparent_panel(frame, x, y, panel_width, panel_height, PANEL_BG_COLOR, 0.88)
+    cv2.rectangle(frame, (x, y), (x + panel_width, y + 46), PANEL_ACCENT_COLOR, cv2.FILLED)
+    cv2.putText(
+        frame,
+        "ATTENDANCE PANEL",
+        (x + 16, y + 33),
+        FONT,
+        FONT_SCALE,
+        TEXT_COLOR,
+        FONT_THICKNESS,
+        cv2.LINE_AA
+    )
+
+    content_x = x + 18
+    line_y = y + 74
+    line_height = int(30 * FONT_SCALE) + 6
+
+    cv2.putText(
+        frame,
+        f"Status: {status_message}",
+        (content_x, line_y),
+        FONT,
+        FONT_SCALE,
+        TEXT_COLOR,
+        FONT_THICKNESS,
+        cv2.LINE_AA
+    )
+
+    line_y += line_height
+    cv2.putText(
+        frame,
+        f"Today: {attendance_count}",
+        (content_x, line_y),
+        FONT,
+        FONT_SCALE,
+        TEXT_COLOR,
+        FONT_THICKNESS,
+        cv2.LINE_AA
+    )
+
+    line_y += line_height + 4
+    cv2.putText(
+        frame,
+        "Recent faces:",
+        (content_x, line_y),
+        FONT,
+        FONT_SCALE,
+        INFO_COLOR,
+        FONT_THICKNESS,
+        cv2.LINE_AA
+    )
+
+    recent = face_names[-4:] if face_names else ["None"]
+    line_y += line_height
+    for name in recent:
+        cv2.putText(
+            frame,
+            f"- {name}",
+            (content_x, line_y),
+            FONT,
+            FONT_SCALE,
+            TEXT_COLOR,
+            FONT_THICKNESS,
+            cv2.LINE_AA
+        )
+        line_y += line_height
+
+    footer_y = y + panel_height - 24
+    cv2.putText(
+        frame,
+        "Press Q to quit",
+        (content_x, footer_y),
+        FONT,
+        FONT_SCALE * 0.9,
+        INFO_COLOR,
+        1,
+        cv2.LINE_AA
+    )
+
+
+def draw_status_bar(frame, status_message):
+    y = frame.shape[0] - 52
+    draw_transparent_panel(frame, 0, y, frame.shape[1], 52, STATUS_BG_COLOR, 0.7)
+    cv2.putText(
+        frame,
+        status_message,
+        (14, y + 34),
+        FONT,
+        FONT_SCALE,
+        TEXT_COLOR,
+        FONT_THICKNESS,
+        cv2.LINE_AA
+    )
+    cv2.putText(
+        frame,
+        "Center your face and avoid glare",
+        (frame.shape[1] - 360, y + 34),
+        FONT,
+        FONT_SCALE * 0.85,
+        INFO_COLOR,
+        1,
+        cv2.LINE_AA
+    )
 
 
 # =========================================================
@@ -385,16 +520,16 @@ while True:
             face_image = cv2.resize(face_image, (200, 200))
             face_image = cv2.equalizeHist(face_image)
 
-            label, confidence = recognizer.predict(face_image)
-            confidence = face_confidence(confidence)
+            label, raw_confidence = recognizer.predict(face_image)
+            confidence = face_confidence(raw_confidence)
 
-            if confidence <= CONFIDENCE_THRESHOLD and label in reverse_labels:
+            if raw_confidence <= CONFIDENCE_THRESHOLD and label in reverse_labels:
                 name = reverse_labels[label]
                 status_message = mark_attendance(name)
                 face_names.append(name)
-                face_confidences.append(100 - confidence)
+                face_confidences.append(confidence)
             else:
-                status_message = "Unknown face detected"
+                status_message = "Unknown person detected"
                 face_names.append("Unknown")
                 face_confidences.append(0)
 
@@ -481,29 +616,8 @@ while True:
         2
     )
 
-    # =====================================================
-    # SHOW STATUS
-    # =====================================================
-
-    status_bg_top = 100
-    status_bg_bottom = 160
-    cv2.rectangle(
-        frame,
-        (10, status_bg_top),
-        (470, status_bg_bottom),
-        (0, 0, 0),
-        cv2.FILLED
-    )
-
-    cv2.putText(
-        frame,
-        status_message,
-        (15, status_bg_top + 30),
-        FONT,
-        0.6,
-        (255, 255, 255),
-        2
-    )
+    draw_side_panel(frame, status_message, attendance_count, face_names)
+    draw_status_bar(frame, status_message)
 
     # =====================================================
     # DISPLAY DATE & TIME
