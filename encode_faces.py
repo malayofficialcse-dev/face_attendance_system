@@ -60,8 +60,10 @@ def create_encodings():
             print(f"  Warning: No face found in {image_file}. Skipping.")
             continue
 
-        x, y, w, h = faces[0]
+        x, y, w, h = max(faces, key=lambda rect: rect[2] * rect[3])
         face_image = gray[y:y+h, x:x+w]
+        face_image = cv2.resize(face_image, (200, 200))
+        face_image = cv2.equalizeHist(face_image)
 
         label = label_map.get(name)
         if label is None:

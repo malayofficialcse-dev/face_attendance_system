@@ -73,50 +73,64 @@ reverse_labels = {value: key for key, value in label_map.items()}
 
 print(f"Loaded {len(reverse_labels)} faces")
 
-if not os.path.exists(CSV_FILE):
-
-    df = pd.DataFrame(
-        columns=[
-            "Name",
-            "Date",
-            "Time"
-        ]
-    )
-
-    df.to_csv(
-        CSV_FILE,
-        index=False
-    )
-
-
-if not os.path.exists(EXCEL_FILE):
-
-    workbook = Workbook()
-
-    sheet = workbook.active
-
-    sheet.title = "Attendance"
-
-    sheet.append([
-        "Name",
-        "Date",
-        "Time"
-    ])
-
-    workbook.save(EXCEL_FILE)
 
 # =========================================================
 # HELPER FUNCTIONS
 # =========================================================
 
-def current_date():
+def create_attendance_files():
+    if not os.path.exists(CSV_FILE):
+        df = pd.DataFrame(columns=["Name", "Date", "Time"])
+        df.to_csv(CSV_FILE, index=False)
+    else:
+        try:
+            df = pd.read_csv(CSV_FILE)
+        except pd.errors.EmptyDataError:
+            df = pd.DataFrame(columns=["Name", "Date", "Time"])
+            df.to_csv(CSV_FILE, index=False)
+        else:
+            if df.empty or not all(col in df.columns for col in ["Name", "Date", "Time"]):
+                df = pd.DataFrame(columns=["Name", "Date", "Time"])
+                df.to_csv(CSV_FILE, index=False)
 
+    if not os.path.exists(EXCEL_FILE):
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.title = "Attendance"
+        sheet.append(["Name", "Date", "Time"])
+        workbook.save(EXCEL_FILE)
+    else:
+        try:
+            load_workbook(EXCEL_FILE)
+        except Exception:
+            workbook = Workbook()
+            sheet = workbook.active
+            sheet.title = "Attendance"
+            sheet.append(["Name", "Date", "Time"])
+            workbook.save(EXCEL_FILE)
+
+
+def load_workbook_safe(filename):
+    try:
+        return load_workbook(filename)
+    except Exception:
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.title = "Attendance"
+        sheet.append(["Name", "Date", "Time"])
+        workbook.save(filename)
+        return workbook
+
+
+def current_date():
     return datetime.now().strftime(config.DATE_FORMAT)
 
 
 def current_time():
-
     return datetime.now().strftime(config.TIME_FORMAT)
+
+
+create_attendance_files()
 
 
 # =========================================================
@@ -131,12 +145,29 @@ def face_confidence(confidence):
 # CHECK IF ALREADY MARKED TODAY
 # =========================================================
 
-def already_marked(name):
+def load_attendance_df():
 
     if not os.path.exists(CSV_FILE):
-        return False
+        return pd.DataFrame(columns=["Name", "Date", "Time"])
 
-    df = pd.read_csv(CSV_FILE)
+    try:
+        df = pd.read_csv(CSV_FILE)
+    except pd.errors.EmptyDataError:
+        return pd.DataFrame(columns=["Name", "Date", "Time"])
+
+    if df.empty or not all(col in df.columns for col in ["Name", "Date", "Time"]):
+        return pd.DataFrame(columns=["Name", "Date", "Time"])
+
+    return df
+
+
+def save_attendance_df(df):
+    df.to_csv(CSV_FILE, index=False)
+
+
+def already_marked(name):
+
+    df = load_attendance_df()
 
     today = current_date()
 
@@ -155,18 +186,17 @@ def already_marked(name):
 
 def mark_attendance(name):
 
-    if already_marked(name) and not config.ALLOW_DUPLICATE_ATTENDANCE:
-
-        print(f"{name} already marked today.")
-
-        return
-
     date = current_date()
     time = current_time()
 
+    if already_marked(name) and not config.ALLOW_DUPLICATE_ATTENDANCE:
+        message = f"{name} already marked today at {date} {time}"
+        print(message)
+        return message
+
     # ---------------- CSV ----------------
 
-    df = pd.read_csv(CSV_FILE)
+    df = load_attendance_df()
 
     new_row = pd.DataFrame(
         [[name, date, time]],
@@ -182,14 +212,11 @@ def mark_attendance(name):
         ignore_index=True
     )
 
-    df.to_csv(
-        CSV_FILE,
-        index=False
-    )
+    save_attendance_df(df)
 
     # ---------------- Excel ----------------
 
-    workbook = load_workbook(EXCEL_FILE)
+    workbook = load_workbook_safe(EXCEL_FILE)
 
     sheet = workbook.active
 
@@ -201,7 +228,9 @@ def mark_attendance(name):
 
     workbook.save(EXCEL_FILE)
 
-    print(f"Attendance Marked -> {name}")
+    message = f"Attendance marked: {name} at {date} {time}"
+    print(message)
+    return message
 
 
 # =========================================================
@@ -289,6 +318,7 @@ if not video_capture.isOpened():
 print("Camera Started Successfully")
 print("\nPress 'Q' to Quit\n")
 
+face_cascade = cv2.CascadeClassifier(HAAR_CASCADE_PATH)
 
 # =========================================================
 # START FACE RECOGNITION
@@ -296,6 +326,10 @@ print("\nPress 'Q' to Quit\n")
 
 frame_counter = 0
 last_time = time.time()
+prev_face_locations = []
+prev_face_names = []
+prev_face_confidences = []
+prev_status_message = "No face detected"
 
 while True:
 
@@ -317,20 +351,23 @@ while True:
         fy=PROCESS_SCALE
     )
 
-    # Convert BGR -> RGB
-    rgb_small_frame = cv2.cvtColor(
+    # Convert BGR -> grayscale
+    gray_small_frame = cv2.cvtColor(
         small_frame,
-        cv2.COLOR_BGR2RGB
+        cv2.COLOR_BGR2GRAY
     )
 
     should_process = SKIP_FRAMES <= 1 or frame_counter % SKIP_FRAMES == 0
 
+    face_locations = prev_face_locations
+    face_names = prev_face_names
+    face_confidences = prev_face_confidences
+    status_message = prev_status_message
+
     if should_process:
 
-        gray_frame = cv2.cvtColor(rgb_small_frame, cv2.COLOR_BGR2GRAY)
-        face_cascade = cv2.CascadeClassifier(HAAR_CASCADE_PATH)
         face_locations = face_cascade.detectMultiScale(
-            gray_frame,
+            gray_small_frame,
             scaleFactor=1.1,
             minNeighbors=5,
             minSize=(30, 30)
@@ -338,22 +375,33 @@ while True:
 
         face_names = []
         face_confidences = []
+        status_message = "No face detected"
+
+        if len(face_locations) == 0:
+            status_message = "No face detected"
 
         for (x, y, w, h) in face_locations:
-            face_image = gray_frame[y:y+h, x:x+w]
+            face_image = gray_small_frame[y:y+h, x:x+w]
             face_image = cv2.resize(face_image, (200, 200))
+            face_image = cv2.equalizeHist(face_image)
 
             label, confidence = recognizer.predict(face_image)
             confidence = face_confidence(confidence)
 
             if confidence <= CONFIDENCE_THRESHOLD and label in reverse_labels:
                 name = reverse_labels[label]
-                mark_attendance(name)
+                status_message = mark_attendance(name)
                 face_names.append(name)
                 face_confidences.append(100 - confidence)
             else:
+                status_message = "Unknown face detected"
                 face_names.append("Unknown")
-                face_confidences.append(confidence)
+                face_confidences.append(0)
+
+        prev_face_locations = face_locations
+        prev_face_names = face_names
+        prev_face_confidences = face_confidences
+        prev_status_message = status_message
 
     frame_counter += 1
 
@@ -413,30 +461,49 @@ while True:
     # SHOW ATTENDANCE COUNT
     # =====================================================
 
-    try:
+    attendance_df = load_attendance_df()
 
-        attendance_df = pd.read_csv(CSV_FILE)
+    today = current_date()
 
-        today = current_date()
+    attendance_count = len(
+        attendance_df[
+            attendance_df["Date"] == today
+        ]
+    )
 
-        attendance_count = len(
-            attendance_df[
-                attendance_df["Date"] == today
-            ]
-        )
+    cv2.putText(
+        frame,
+        f"Today's Attendance : {attendance_count}",
+        (10, 65),
+        FONT,
+        0.7,
+        (0, 255, 255),
+        2
+    )
 
-        cv2.putText(
-            frame,
-            f"Today's Attendance : {attendance_count}",
-            (10, 65),
-            FONT,
-            0.7,
-            (0, 255, 255),
-            2
-        )
+    # =====================================================
+    # SHOW STATUS
+    # =====================================================
 
-    except Exception:
-        pass
+    status_bg_top = 100
+    status_bg_bottom = 160
+    cv2.rectangle(
+        frame,
+        (10, status_bg_top),
+        (470, status_bg_bottom),
+        (0, 0, 0),
+        cv2.FILLED
+    )
+
+    cv2.putText(
+        frame,
+        status_message,
+        (15, status_bg_top + 30),
+        FONT,
+        0.6,
+        (255, 255, 255),
+        2
+    )
 
     # =====================================================
     # DISPLAY DATE & TIME
