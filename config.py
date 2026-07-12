@@ -71,8 +71,7 @@ FACE_DETECTION_MODEL = "haar"
 # Options:
 # "haar" -> OpenCV Haar Cascade
 # "lbp" -> OpenCV LBP Cascade
-
-LBPH_CONFIDENCE_THRESHOLD = 150
+LBPH_CONFIDENCE_THRESHOLD = 85
 
 SHOW_CONFIDENCE = True
 

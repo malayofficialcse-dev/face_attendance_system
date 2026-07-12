@@ -11,6 +11,7 @@ import cv2
 import numpy as np
 import pickle
 import config
+import re
 
 
 def create_encodings():
@@ -38,7 +39,9 @@ def create_encodings():
 
     for image_file in image_files:
         image_path = os.path.join(config.IMAGE_FOLDER, image_file)
-        name = os.path.splitext(image_file)[0]
+        base_name = os.path.splitext(image_file)[0]
+        # Remove trailing numbers like _1, -2, or space 3 to group multiple images for the same person
+        name = re.sub(r'[\-_ ]\d+$', '', base_name)
 
         print(f"Processing: {image_file} -> {name}")
 
@@ -65,6 +68,9 @@ def create_encodings():
         face_image = cv2.resize(face_image, (200, 200))
         face_image = cv2.equalizeHist(face_image)
 
+        # Augmented face: horizontal flip to double the training data
+        face_image_flipped = cv2.flip(face_image, 1)
+
         label = label_map.get(name)
         if label is None:
             label = next_label
@@ -72,6 +78,10 @@ def create_encodings():
             next_label += 1
 
         training_faces.append(face_image)
+        training_labels.append(label)
+        
+        # Add the flipped version as well
+        training_faces.append(face_image_flipped)
         training_labels.append(label)
 
     if not training_faces:
