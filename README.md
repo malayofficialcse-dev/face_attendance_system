@@ -1,4 +1,3 @@
-# face_attendance_system
 #  AI Face Attendance System
 
 An intelligent Face Recognition Attendance System built using **Python**, **OpenCV**, and **face_recognition** that automatically detects and recognizes faces through a webcam, marks attendance, exports reports to Excel, and supports email notifications.
