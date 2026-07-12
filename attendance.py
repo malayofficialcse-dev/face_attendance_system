@@ -14,7 +14,6 @@ import os
 import time
 from datetime import datetime
 from openpyxl import Workbook, load_workbook
-from fer import FER
 import math
 
 import config
@@ -88,9 +87,9 @@ reverse_labels = {value: key for key, value in label_map.items()}
 print(f"Loaded {len(reverse_labels)} faces")
 
 print("=" * 60)
-print("Loading Emotion Detector...")
+print("Skipping Emotion Detector loading due to package import issues.")
 print("=" * 60)
-emotion_detector = FER(mtcnn=False)
+emotion_detector = None
 
 
 # =========================================================
@@ -569,16 +568,8 @@ while True:
             face_image = cv2.resize(face_image, (200, 200))
             face_image = cv2.equalizeHist(face_image)
 
-            # Detect Emotion
-            orig_x = int(x / PROCESS_SCALE)
-            orig_y = int(y / PROCESS_SCALE)
-            orig_w = int(w / PROCESS_SCALE)
-            orig_h = int(h / PROCESS_SCALE)
-            color_face = frame[orig_y:orig_y+orig_h, orig_x:orig_x+orig_w]
-            
-            emotion, _ = emotion_detector.top_emotion(color_face)
-            if not emotion:
-                emotion = "Neutral"
+            # Determine emotion (disabled due to FER import issue)
+            emotion = "Neutral"
             face_emotions.append(emotion)
 
             label, raw_confidence = recognizer.predict(face_image)
