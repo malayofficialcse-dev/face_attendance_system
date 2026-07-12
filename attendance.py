@@ -14,6 +14,8 @@ import os
 import time
 from datetime import datetime
 from openpyxl import Workbook, load_workbook
+from fer import FER
+import math
 
 import config
 from email_report import send_attendance_report
@@ -84,6 +86,11 @@ with open(LABELS_FILE, "rb") as f:
 reverse_labels = {value: key for key, value in label_map.items()}
 
 print(f"Loaded {len(reverse_labels)} faces")
+
+print("=" * 60)
+print("Loading Emotion Detector...")
+print("=" * 60)
+emotion_detector = FER(mtcnn=False)
 
 
 # =========================================================
@@ -380,7 +387,8 @@ def draw_face_box(
     left,
     name,
     confidence,
-    color
+    color,
+    emotion
 ):
 
     # Draw thin base rectangle
@@ -402,20 +410,32 @@ def draw_face_box(
     cv2.line(frame, (right, bottom), (right - length, bottom), color, thickness)
     cv2.line(frame, (right, bottom), (right, bottom - length), color, thickness)
 
-    # Center crosshair
-    cx = (left + right) // 2
-    cy = (top + bottom) // 2
-    cv2.line(frame, (cx - 10, cy), (cx + 10, cy), color, 1)
-    cv2.line(frame, (cx, cy - 10), (cx, cy + 10), color, 1)
+    # Scanner Animation
+    box_height = bottom - top
+    current_time = time.time()
+    cycle = (current_time % 1.5) / 1.5
+    if cycle < 0.5:
+        progress = cycle * 2
+    else:
+        progress = (1.0 - cycle) * 2
+        
+    line_y = int(top + progress * box_height)
+    scan_color = (255, 255, 0) # Cyan
+    cv2.line(frame, (left, line_y), (right, line_y), scan_color, 2)
+    cv2.line(frame, (left, line_y-1), (right, line_y-1), scan_color, 1)
+    cv2.line(frame, (left, line_y+1), (right, line_y+1), scan_color, 1)
 
     # Top info text
-    face_w = right - left
-    face_h = bottom - top
-    cv2.putText(frame, f"TARGET: {face_w}x{face_h}", (left, top - 10), FONT, 0.4, color, 1, cv2.LINE_AA)
+    if emotion:
+        cv2.putText(frame, f"Emotion: {emotion.capitalize()}", (left, top - 10), FONT, 0.45, scan_color, 1, cv2.LINE_AA)
 
-    label = name
-    if SHOW_CONFIDENCE:
-        label = f"{name} ({confidence:.1f}%)"
+    if name == "Unknown":
+        label = "Not Identified"
+    else:
+        label = f"Identified: {name}"
+
+    if SHOW_CONFIDENCE and name != "Unknown":
+        label += f" ({confidence:.1f}%)"
 
     # Bottom label background
     cv2.rectangle(
@@ -490,6 +510,7 @@ last_time = time.time()
 prev_face_locations = []
 prev_face_names = []
 prev_face_confidences = []
+prev_face_emotions = []
 prev_status_message = "No face detected"
 
 while True:
@@ -523,6 +544,7 @@ while True:
     face_locations = prev_face_locations
     face_names = prev_face_names
     face_confidences = prev_face_confidences
+    face_emotions = prev_face_emotions
     status_message = prev_status_message
 
     if should_process:
@@ -536,6 +558,7 @@ while True:
 
         face_names = []
         face_confidences = []
+        face_emotions = []
         status_message = "No face detected"
 
         if len(face_locations) == 0:
@@ -545,6 +568,18 @@ while True:
             face_image = gray_small_frame[y:y+h, x:x+w]
             face_image = cv2.resize(face_image, (200, 200))
             face_image = cv2.equalizeHist(face_image)
+
+            # Detect Emotion
+            orig_x = int(x / PROCESS_SCALE)
+            orig_y = int(y / PROCESS_SCALE)
+            orig_w = int(w / PROCESS_SCALE)
+            orig_h = int(h / PROCESS_SCALE)
+            color_face = frame[orig_y:orig_y+orig_h, orig_x:orig_x+orig_w]
+            
+            emotion, _ = emotion_detector.top_emotion(color_face)
+            if not emotion:
+                emotion = "Neutral"
+            face_emotions.append(emotion)
 
             label, raw_confidence = recognizer.predict(face_image)
             confidence = face_confidence(raw_confidence)
@@ -562,6 +597,7 @@ while True:
         prev_face_locations = face_locations
         prev_face_names = face_names
         prev_face_confidences = face_confidences
+        prev_face_emotions = face_emotions
         prev_status_message = status_message
 
     frame_counter += 1
@@ -570,10 +606,11 @@ while True:
     # DRAW RESULTS
     # =====================================================
 
-    for (x, y, w, h), name, confidence in zip(
+    for (x, y, w, h), name, confidence, emotion in zip(
         face_locations,
         face_names,
-        face_confidences
+        face_confidences,
+        face_emotions
     ):
 
         # Scale back coordinates to original frame size
@@ -601,7 +638,8 @@ while True:
             left,
             name,
             confidence,
-            color
+            color,
+            emotion
         )
 
     # =====================================================
