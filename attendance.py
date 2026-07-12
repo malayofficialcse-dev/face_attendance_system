@@ -383,35 +383,61 @@ def draw_face_box(
     color
 ):
 
-    cv2.rectangle(
-        frame,
-        (left, top),
-        (right, bottom),
-        color,
-        2
-    )
+    # Draw thin base rectangle
+    cv2.rectangle(frame, (left, top), (right, bottom), color, 1)
+
+    # Draw thicker corners for a high-tech look
+    length = 20
+    thickness = 4
+    # Top-left
+    cv2.line(frame, (left, top), (left + length, top), color, thickness)
+    cv2.line(frame, (left, top), (left, top + length), color, thickness)
+    # Top-right
+    cv2.line(frame, (right, top), (right - length, top), color, thickness)
+    cv2.line(frame, (right, top), (right, top + length), color, thickness)
+    # Bottom-left
+    cv2.line(frame, (left, bottom), (left + length, bottom), color, thickness)
+    cv2.line(frame, (left, bottom), (left, bottom - length), color, thickness)
+    # Bottom-right
+    cv2.line(frame, (right, bottom), (right - length, bottom), color, thickness)
+    cv2.line(frame, (right, bottom), (right, bottom - length), color, thickness)
+
+    # Center crosshair
+    cx = (left + right) // 2
+    cy = (top + bottom) // 2
+    cv2.line(frame, (cx - 10, cy), (cx + 10, cy), color, 1)
+    cv2.line(frame, (cx, cy - 10), (cx, cy + 10), color, 1)
+
+    # Top info text
+    face_w = right - left
+    face_h = bottom - top
+    cv2.putText(frame, f"TARGET: {face_w}x{face_h}", (left, top - 10), FONT, 0.4, color, 1, cv2.LINE_AA)
 
     label = name
-
     if SHOW_CONFIDENCE:
         label = f"{name} ({confidence:.1f}%)"
 
+    # Bottom label background
     cv2.rectangle(
         frame,
-        (left, bottom - 30),
-        (right, bottom),
+        (left, bottom),
+        (right, bottom + 30),
         color,
         cv2.FILLED
     )
 
+    # Ensure text contrasts well against background
+    text_color = (0, 0, 0) if color == (0, 255, 0) else (255, 255, 255)
+    
     cv2.putText(
         frame,
         label,
-        (left + 6, bottom - 8),
+        (left + 6, bottom + 20),
         FONT,
         0.55,
-        (255, 255, 255),
-        1
+        text_color,
+        2,
+        cv2.LINE_AA
     )
 
 
