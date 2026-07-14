@@ -55,7 +55,12 @@ HAAR_CASCADE_PATH = os.path.join(
 # CAMERA SETTINGS
 # =========================================================
 
+# Single camera (legacy):
 CAMERA_INDEX = 0
+
+# Multi-camera: list all camera indices you want to use.
+# Example: CAMERA_INDICES = [0, 1]  will open two cameras simultaneously.
+CAMERA_INDICES = [0]
 
 FRAME_WIDTH = 1280
 
@@ -70,7 +75,7 @@ PROCESS_SCALE = 0.25
 FACE_DETECTION_MODEL = "haar"
 # Options:
 # "haar" -> OpenCV Haar Cascade
-# "lbp" -> OpenCV LBP Cascade
+# "lbp"  -> OpenCV LBP Cascade
 LBPH_CONFIDENCE_THRESHOLD = 85
 
 SHOW_CONFIDENCE = True
@@ -91,6 +96,47 @@ TIME_FORMAT = "%H:%M:%S"
 
 DATETIME_FORMAT = "%d-%m-%Y %H:%M:%S"
 
+# ---- Check-In / Check-Out --------------------------------
+# When True, the first mark of the day is "IN",
+# the second is "OUT" (calculates hours), and so on.
+ENABLE_CHECKIN_CHECKOUT = True
+
+# ---- Late Arrival Detection ------------------------------
+ENABLE_LATE_DETECTION = True
+# Attendance marked after this hour:minute is flagged LATE
+LATE_ARRIVAL_HOUR   = 9    # 24-hour format
+LATE_ARRIVAL_MINUTE = 0
+
+# =========================================================
+# EMOTION DETECTION
+# =========================================================
+
+# Uses DeepFace in a background thread.
+# Set False to skip (faster startup, no TF overhead).
+ENABLE_EMOTION_DETECTION = True
+
+# How many frames between emotion analysis submissions
+EMOTION_SUBMIT_INTERVAL = 15
+
+# =========================================================
+# LIVENESS DETECTION
+# =========================================================
+
+# Uses MediaPipe Face Mesh to detect eye blinks.
+# A person must blink at least LIVENESS_REQUIRED_BLINKS times
+# before their attendance is marked.
+ENABLE_LIVENESS_DETECTION = True
+
+# Eye Aspect Ratio threshold — eyes are "closed" when EAR < this value
+LIVENESS_EAR_THRESHOLD = 0.21
+
+# Number of consecutive frames EAR must stay below threshold
+# to count as one blink
+LIVENESS_CONSEC_FRAMES = 3
+
+# Number of blinks required to pass liveness check
+LIVENESS_REQUIRED_BLINKS = 1
+
 # =========================================================
 # DISPLAY SETTINGS
 # =========================================================
@@ -110,6 +156,8 @@ UNKNOWN_FACE_COLOR = (0, 0, 255)
 TEXT_COLOR = (255, 255, 255)
 
 INFO_COLOR = (255, 255, 0)
+
+LATE_COLOR = (0, 165, 255)   # Orange for late arrivals
 
 # =========================================================
 # EMAIL SETTINGS

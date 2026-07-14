@@ -1,3 +1,5 @@
+# WARNING: do NOT install plain opencv-python — it removes cv2.face (LBPHFaceRecognizer)
+# deepface pulls in opencv-python automatically; always reinstall opencv-contrib after deepface install
 opencv-contrib-python==4.12.0.88
 numpy==2.2.6
 pandas==2.3.1
@@ -6,3 +8,4 @@ Pillow==11.3.0
 deepface>=0.0.94
 tf-keras
 tensorflow>=2.15.0
+# mediapipe removed — liveness now uses OpenCV Haar eye cascade (no extra install needed)
